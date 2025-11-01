@@ -1,12 +1,12 @@
 # Oriphim MVP - AI Trading SaaS Platform
 
-🔥 **Transform your IBKR bots into a scalable SaaS trading automation platform**
+**Transform your IBKR bots into a scalable SaaS trading automation platform**
 
 ## Overview
 
 Oriphim is a complete SaaS solution that transforms the existing IBKR bot repository into a cloud-managed trading automation platform. Users sign up, download a lightweight Runner app, connect their broker, and manage AI-powered trading bots through a web dashboard - all while keeping their trading data and credentials completely private on their local machine.
 
-## 🏗️ Architecture
+## Architecture
 
 ### Two-Part System
 
@@ -22,7 +22,7 @@ Oriphim is a complete SaaS solution that transforms the existing IBKR bot reposi
 - Streams logs to Cloud via encrypted WebSocket
 - Keeps all sensitive data on user's machine
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Deploy Oriphim Cloud
 
@@ -63,7 +63,7 @@ STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
-## 🎯 User Journey
+## User Journey
 
 1. **Sign Up** → User creates account at Oriphim dashboard
 2. **Download** → Gets Runner installer and API key
@@ -73,7 +73,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 6. **Monitor** → Real-time P&L and trade logs in browser
 7. **Scale** → Upgrade to Pro for live trading
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 oriphim/
@@ -100,7 +100,7 @@ oriphim/
 └── AGENTS.md                 # Project specification
 ```
 
-## 🤖 Available Bots
+## Available Bots
 
 | Bot | Strategy | Risk Level | Description |
 |-----|----------|------------|-------------|
@@ -109,7 +109,7 @@ oriphim/
 | **Condor** | Iron Condors | Medium | Range-bound strategies in calm markets |
 | **Gamma-Burst** | Vol Scalping | High | Aggressive strategies during vol spikes |
 
-## 🧠 AI Features (Local ML)
+## AI Features (Local ML)
 
 - **Regime Detection**: Trend/Chop/Event classification
 - **Expected Move**: Intraday volatility forecasting  
@@ -119,14 +119,14 @@ oriphim/
 
 *All ML runs locally using broker data - zero external data costs.*
 
-## 💰 Business Model
+## Business Model
 
 | Plan | Price | Features |
 |------|-------|----------|
 | **Free** | $0/month | Paper trading, 2 bots, basic analytics |
 | **Pro** | $29/month | Live trading, unlimited bots, AI assist, priority support |
 
-## 🔒 Security
+## Security
 
 - **Broker credentials** stay on user's machine only
 - **TLS encryption** for all Runner ↔ Cloud communication  
@@ -134,7 +134,7 @@ oriphim/
 - **Revocable device tokens** for Runner authentication
 - **No PII or financial data** stored in cloud
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
@@ -145,26 +145,26 @@ oriphim/
 | Billing | Stripe | Subscription management |
 | ML | LightGBM, scikit-learn | Local AI models |
 
-## 📊 Operating Costs
+## Operating Costs
 
 - **Supabase**: Free tier → $25/month
 - **Stripe**: 2.9% + $0.30/transaction  
 - **Per-user cost**: ~$0.10/month
 - **Total infrastructure**: <$50/month
 
-## 🚦 Development Phases
+## Development Phases
 
-### ✅ Phase 1: Core Infrastructure
+### Phase 1: Core Infrastructure
 - [x] Supabase schema and edge functions
 - [x] Bot interface refactoring  
 - [x] Runner authentication system
 
-### ✅ Phase 2: SaaS Integration  
+### Phase 2: SaaS Integration  
 - [x] Streamlit dashboard
 - [x] Real-time log streaming
 - [x] ML framework structure
 
-### 🔄 Phase 3: Production Ready
+### Phase 3: Production Ready
 - [ ] Stripe billing integration
 - [ ] Runner installers (Windows/Mac/Linux)
 - [ ] End-to-end testing
@@ -209,7 +209,7 @@ curl -X POST https://your-project.supabase.co/functions/v1/start-run \
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🔥 Get Started
+## Get Started
 
 Ready to transform your trading bots into a SaaS platform?
 
@@ -219,5 +219,3 @@ Ready to transform your trading bots into a SaaS platform?
 4. **Start building your trading empire**
 
 ---
-
-*Built with ❤️ for algorithmic traders who want to scale their strategies.*
