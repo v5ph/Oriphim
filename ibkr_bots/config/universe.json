@@ -1,0 +1,7 @@
+{
+  "indexes": ["SPX", "SPY", "QQQ"],
+  "mega_cap_tech": ["AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "META", "GOOGL"],
+  "sector_etfs": ["XLF", "XLE", "XLV", "SMH"],
+  "event_driven_selective": ["AMD", "NFLX", "SHOP", "BA", "CRM", "ORCL", "COST", "WMT"]
+}
+

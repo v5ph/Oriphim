@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oriphim Runner</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <img src="assets/oriphim_legend.png" alt="Oriphim" class="logo-img">
+                    <h1>ORIPHIM RUNNER</h1>
+                </div>
+                <div class="status-indicator" id="status-indicator">
+                    <div class="status-dot" id="status-dot"></div>
+                    <span id="status-text">Initializing...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Connection Status Section -->
+            <section class="status-section">
+                <h2>Connection Status</h2>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <span class="status-label">Cloud Connection:</span>
+                        <span class="status-value" id="cloud-status">DISCONNECTED</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Broker (IBKR):</span>
+                        <span class="status-value" id="broker-status">DISCONNECTED</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Trading Mode:</span>
+                        <span class="status-value" id="trading-mode">PAPER</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Runner Version:</span>
+                        <span class="status-value" id="runner-version">v1.0.0</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Current Activity Section -->
+            <section class="activity-section">
+                <h2>Current Activity</h2>
+                <div class="activity-content">
+                    <div class="current-job">
+                        <span class="job-label">Active Job:</span>
+                        <span class="job-value" id="current-job">None</span>
+                    </div>
+                    <div class="job-details" id="job-details" style="display: none;">
+                        <div class="job-detail">
+                            <span class="detail-label">Strategy:</span>
+                            <span class="detail-value" id="job-strategy">-</span>
+                        </div>
+                        <div class="job-detail">
+                            <span class="detail-label">Symbol:</span>
+                            <span class="detail-value" id="job-symbol">-</span>
+                        </div>
+                        <div class="job-detail">
+                            <span class="detail-label">Started:</span>
+                            <span class="detail-value" id="job-started">-</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Logs Section -->
+            <section class="logs-section">
+                <div class="logs-header">
+                    <h2>Recent Activity</h2>
+                    <button class="btn btn-small" id="clear-logs-btn">Clear</button>
+                </div>
+                <div class="logs-container">
+                    <div class="logs-content" id="logs-content">
+                        <div class="log-entry">
+                            <span class="log-time">[12:00:00]</span>
+                            <span class="log-message">Oriphim Runner initialized</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Controls Section -->
+            <section class="controls-section">
+                <div class="control-buttons">
+                    <button class="btn btn-primary" id="pause-btn" data-action="pause">
+                        <span class="btn-icon">⏸</span>
+                        Pause Runner
+                    </button>
+                    <button class="btn btn-secondary" id="restart-btn" data-action="restart">
+                        <span class="btn-icon">↻</span>
+                        Restart
+                    </button>
+                    <button class="btn btn-secondary" id="logs-folder-btn" data-action="logs">
+                        <span class="btn-icon">📁</span>
+                        Open Logs
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-item">
+                    <span class="footer-label">Secure Tunnel:</span>
+                    <span class="footer-value" id="tunnel-status">Active</span>
+                </div>
+                <div class="footer-item">
+                    <span class="footer-label">Local ML:</span>
+                    <span class="footer-value" id="ml-status">Idle</span>
+                </div>
+                <div class="footer-item">
+                    <span class="footer-label">Last Update:</span>
+                    <span class="footer-value" id="last-update">--:--:--</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Setup Modal -->
+    <div class="modal" id="setup-modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Welcome to Oriphim Runner</h3>
+            </div>
+            <div class="modal-body">
+                <p>To get started, please enter your API key from the Oriphim dashboard:</p>
+                <div class="form-group">
+                    <label for="api-key-input">API Key:</label>
+                    <input type="password" id="api-key-input" class="form-input" placeholder="Enter your API key">
+                </div>
+                <p class="help-text">
+                    You can find your API key in the Oriphim dashboard under Settings → API Keys.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="setup-cancel-btn">Cancel</button>
+                <button class="btn btn-primary" id="setup-save-btn">Save & Connect</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

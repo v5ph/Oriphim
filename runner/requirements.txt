@@ -1,0 +1,28 @@
+# Oriphim Runner Requirements
+# Desktop agent for executing trading bots locally
+
+# Core dependencies
+httpx>=0.25.0
+supabase>=2.0.0
+python-dotenv>=1.0.0
+asyncio-mqtt>=0.11.0
+
+# Trading and data
+ib-insync>=0.9.86
+pandas>=2.0.0
+numpy>=1.24.0
+pyyaml>=6.0
+
+# Machine Learning (for future ML module)
+lightgbm>=4.0.0
+scikit-learn>=1.3.0
+xgboost>=2.0.0
+
+# Packaging (for creating executable)
+pyinstaller>=6.0.0
+cx-freeze>=6.15.0
+
+# Development
+pytest>=7.4.0
+black>=23.0.0
+flake8>=6.0.0

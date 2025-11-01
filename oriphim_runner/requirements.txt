@@ -1,0 +1,40 @@
+# Oriphim Runner - Python Dependencies
+
+# Core dependencies
+ib_insync>=0.9.86
+asyncio-mqtt>=0.13.0
+websockets>=12.0
+python-dotenv>=1.0.0
+pydantic>=2.5.0
+click>=8.1.0
+
+# Data handling
+pandas>=2.0.0
+numpy>=1.24.0,<2.0.0
+SQLAlchemy>=2.0.0
+cryptography>=41.0.0
+
+# Async and networking
+aiohttp>=3.9.0
+aiofiles>=23.0.0
+httpx>=0.25.0
+
+# Logging and monitoring
+structlog>=23.0.0
+rich>=13.0.0
+
+# Optional UI dependencies (for standalone Python UI)
+# tkinter is built-in on Windows, no need to install
+Pillow>=10.0.0
+pystray>=0.19.0; platform_system=="Windows"
+
+# Development dependencies
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+black>=23.0.0
+isort>=5.12.0
+mypy>=1.7.0
+
+# Platform-specific dependencies
+pywin32>=306; platform_system=="Windows"
+psutil>=5.9.0

@@ -1,0 +1,49 @@
+{
+  "name": "oriphim-runner",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Oriphim Runner - AI-Driven Options Trading Automation Desktop Client",
+  "type": "module",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "preview": "tauri build --debug",
+    "setup": "npm install && cd src-tauri && cargo fetch",
+    "python-setup": "pip install -r requirements.txt",
+    "clean": "rimraf src-tauri/target dist",
+    "lint": "eslint src --ext .js,.html,.css",
+    "format": "prettier --write src/**/*.{js,html,css,json}"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^1.6.3",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0",
+    "rimraf": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "keywords": [
+    "options-trading",
+    "ai",
+    "automation",
+    "desktop",
+    "tauri",
+    "ibkr",
+    "finance"
+  ],
+  "author": "Oriphim Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oriphim/oriphim-runner"
+  },
+  "homepage": "https://oriphim.com",
+  "tauri": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "devPath": "./src",
+    "distDir": "./src"
+  }
+}

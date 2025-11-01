@@ -1,0 +1,27 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.DS_Store
+*.so
+.coverage
+.pytest_cache/
+.mypy_cache/
+.vscode/
+.idea/
+
+# Data and logs
+data/*.db
+data/iv_cache.json
+logs/*.json
+logs/*.log
+
+# Environment
+.env
+
+# Temporary files
+*.tmp
+*.swp
+*~

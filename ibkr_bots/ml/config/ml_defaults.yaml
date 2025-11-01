@@ -1,0 +1,108 @@
+# ML Configuration for Oriphim Bots
+# Default settings for machine learning models
+
+regime:
+  # Market regime classification settings
+  bars: "1m"                    # Bar timeframe for features
+  warmup_minutes: 45           # Minutes to warm up before predictions
+  targets: ["trend", "chop", "event"]
+  min_confidence: 0.6          # Minimum confidence to act on prediction
+  features:
+    - "atr_normalized"
+    - "vwap_distance"  
+    - "iv_rank_change"
+    - "opening_gap_pct"
+    - "volume_ratio"
+
+expected_move:
+  # Expected move regression settings
+  horizon_minutes: "to_close"   # Prediction horizon
+  features:
+    - "atm_straddle_mid"
+    - "iv_skew_slope"
+    - "term_structure_slope"
+    - "realized_vol_5d"
+    - "vix_level"
+  update_frequency_minutes: 15  # How often to update EM predictions
+
+trade_score:
+  # Trade opportunity scoring settings
+  horizon_minutes: 60          # Trade outcome horizon
+  label: "tp_before_sl"        # Target label for training
+  pmin: 0.58                   # Minimum probability to enter trade
+  features:
+    - "iv_rank"
+    - "delta_target"
+    - "credit_to_width_ratio" 
+    - "em_strike_distance"
+    - "days_to_expiry"
+    - "vwap_context"
+
+exec_timing:
+  # Execution timing optimization
+  wait_seconds: [0, 3, 7, 15]  # Delay options to evaluate
+  objective: "improve_mid_bps" # Optimization target
+  features:
+    - "bid_ask_spread"
+    - "quote_instability"
+    - "time_of_day"
+    - "volume_imbalance"
+
+risk_guard:
+  # Risk monitoring and anomaly detection
+  detector: "adwin"            # Drift detection algorithm
+  halt_on_anomaly: true        # Stop trading on anomalies
+  volatility_threshold: 2.0    # Multiple of expected volatility
+  features:
+    - "realized_vol_intraday"
+    - "pnl_drawdown_pct"
+    - "vix_spike_magnitude"
+    - "correlation_breakdown"
+
+# Model registry settings
+registry:
+  local_path: "~/.oriphim/models"
+  model_format: "joblib"       # joblib, onnx, or lightgbm
+  keep_versions: 5             # Number of model versions to retain
+  auto_update: false           # Auto-update models (future feature)
+
+# Training settings (for offline training)
+training:
+  validation_method: "time_series_split"
+  n_splits: 5
+  test_size_days: 30
+  min_samples: 1000
+  
+  # Feature engineering
+  feature_selection: true
+  max_features: 50
+  correlation_threshold: 0.95
+  
+  # Model hyperparameters
+  lightgbm:
+    objective: "binary"
+    metric: "binary_logloss"
+    num_leaves: 31
+    learning_rate: 0.1
+    feature_fraction: 0.8
+    bagging_fraction: 0.8
+    bagging_freq: 5
+    verbose: -1
+    
+# Data settings
+data:
+  # Local data storage
+  cache_path: "~/.oriphim/data"
+  format: "parquet"            # parquet or feather
+  retention_days: 180          # Days to keep cached data
+  
+  # Real-time features
+  update_frequency_seconds: 30
+  batch_size: 1000
+
+# Logging and monitoring
+logging:
+  ml_decisions: true           # Log ML decision rationales
+  feature_importance: true     # Log feature importance
+  model_performance: true      # Track model performance
+  level: "INFO"
