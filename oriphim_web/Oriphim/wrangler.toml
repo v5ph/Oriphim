@@ -1,0 +1,40 @@
+name = "oriphim-website"
+compatibility_date = "2025-11-07"
+
+[build]
+command = "npm run build:cloudflare"
+cwd = "oriphim_web/Oriphim"
+publish = "oriphim_web/Oriphim/dist"
+
+[build.environment_variables]
+NODE_VERSION = "18"
+NPM_VERSION = "9"
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200
+force = false
+
+[[headers]]
+for = "/*"
+[headers.values]
+X-Frame-Options = "DENY"
+X-Content-Type-Options = "nosniff"
+X-XSS-Protection = "1; mode=block"
+Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+for = "/assets/*"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "*.js"
+[headers.values]
+Cache-Control = "public, max-age=31536000"
+
+[[headers]]
+for = "*.css"
+[headers.values]
+Cache-Control = "public, max-age=31536000"

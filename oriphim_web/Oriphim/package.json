@@ -6,9 +6,14 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:dev": "vite build --mode development",
+    "build:production": "vite build --mode production",
+    "build:cloudflare": "npm run build:production",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "lint:fix": "eslint . --fix",
+    "preview": "vite preview",
+    "deploy": "npm run build:cloudflare",
+    "analyze": "npx vite-bundle-analyzer dist/stats.html",
+    "test:build": "npm run build && npm run preview"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
