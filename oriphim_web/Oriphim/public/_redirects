@@ -1,0 +1,10 @@
+/*    /index.html   200
+
+# Redirect old URLs if needed
+/dashboard    /auth    302
+/login        /auth    302
+
+# Block sensitive files
+/config/*     /404.html  404
+/.env*        /404.html  404
+/src/*        /404.html  404

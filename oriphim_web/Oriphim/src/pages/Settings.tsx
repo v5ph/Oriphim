@@ -6,23 +6,34 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { AlertCircle, Bell, MessageSquare, Mail, Telegram, Bot, Save, TestTube, Key } from 'lucide-react'
+import { AlertCircle, Bell, MessageSquare, Mail, Send, Bot, Save, Key, Plus, Copy, Trash } from 'lucide-react'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 
 export default function Settings() {
-  const [apiKeys, setApiKeys] = useState({
-    interactiveBrokers: { port: '7497', clientId: '1' },
-    telegram: { botToken: '', chatId: '' },
-    discord: { webhookUrl: '' }
+  // External API Keys (broker credentials)
+  const [brokerKeys, setBrokerKeys] = useState({
+    ibkr: { port: '7497', clientId: '1', name: 'Paper Trading' }
   })
-
+  
+  // Runner API Keys (device tokens)
+  const [runnerKeys, setRunnerKeys] = useState<Array<{
+    id: string
+    name: string
+    token: string
+    created_at: string
+    last_used_at?: string
+  }>>([])
+  
+  // Alert settings (notification channels)
   const [alertSettings, setAlertSettings] = useState({
     emailEnabled: true,
     telegramEnabled: false,
     discordEnabled: false,
+    telegram: { botToken: '', chatId: '' },
+    discord: { webhookUrl: '' },
     alertTypes: {
       entry: true,
       exit: true,
@@ -38,7 +49,7 @@ export default function Settings() {
   })
 
   const [loading, setLoading] = useState(false)
-  const [testingAlert, setTestingAlert] = useState(false)
+  const [generatingKey, setGeneratingKey] = useState(false)
 
   useEffect(() => {
     loadSettings()
@@ -49,20 +60,36 @@ export default function Settings() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // Load API keys
-      const { data: keys } = await supabase
-        .from('api_keys')
+      // Load external API keys (broker credentials)
+      const { data: externalKeys } = await supabase
+        .from('external_api_keys')
         .select('*')
         .eq('user_id', user.id)
 
-      if (keys) {
-        const keyMap = keys.reduce((acc: any, key) => {
-          const service = key.service
-          if (!acc[service]) acc[service] = {}
-          acc[service][key.key_name] = key.encrypted_value
-          return acc
-        }, {})
-        setApiKeys(prev => ({ ...prev, ...keyMap }))
+      if (externalKeys && externalKeys.length > 0) {
+        const ibkrKey = externalKeys.find(key => key.provider === 'ibkr')
+        if (ibkrKey) {
+          setBrokerKeys(prev => ({
+            ...prev,
+            ibkr: {
+              ...prev.ibkr,
+              ...ibkrKey.credentials,
+              name: ibkrKey.name
+            }
+          }))
+        }
+      }
+
+      // Load runner API keys (device tokens)
+      const { data: runnerTokens } = await supabase
+        .from('api_keys')
+        .select('id, name, token, created_at, last_used_at')
+        .eq('user_id', user.id)
+        .is('revoked_at', null)
+        .order('created_at', { ascending: false })
+
+      if (runnerTokens) {
+        setRunnerKeys(runnerTokens)
       }
 
       // Load alert preferences from user metadata
@@ -77,25 +104,95 @@ export default function Settings() {
     }
   }
 
-  const saveApiKey = async (service: string, keyName: string, value: string) => {
+  const saveBrokerCredentials = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
       const { error } = await supabase
-        .from('api_keys')
+        .from('external_api_keys')
         .upsert({
           user_id: user.id,
-          service,
-          key_name: keyName,
-          encrypted_value: value
+          provider: 'ibkr',
+          environment: brokerKeys.ibkr.port === '7497' ? 'paper' : 'live',
+          name: brokerKeys.ibkr.name,
+          credentials: {
+            port: brokerKeys.ibkr.port,
+            clientId: brokerKeys.ibkr.clientId
+          },
+          is_active: true
         })
 
       if (error) throw error
-      toast.success('API key saved successfully')
+      toast.success('Broker credentials saved successfully')
     } catch (error) {
-      console.error('Error saving API key:', error)
-      toast.error('Failed to save API key')
+      console.error('Error saving broker credentials:', error)
+      toast.error('Failed to save broker credentials')
+    }
+  }
+
+  const generateRunnerKey = async () => {
+    setGeneratingKey(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Generate a secure random token
+      const token = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('')
+
+      const deviceName = `Runner ${new Date().toLocaleDateString()}`
+
+      const { data, error } = await supabase
+        .from('api_keys')
+        .insert({
+          user_id: user.id,
+          token: token,
+          name: deviceName
+        })
+        .select('id, name, token, created_at')
+        .single()
+
+      if (error) throw error
+
+      // Add to local state
+      setRunnerKeys(prev => [data, ...prev])
+      toast.success('Runner key generated successfully')
+
+    } catch (error) {
+      console.error('Error generating runner key:', error)
+      toast.error('Failed to generate runner key')
+    } finally {
+      setGeneratingKey(false)
+    }
+  }
+
+  const revokeRunnerKey = async (keyId: string) => {
+    try {
+      const { error } = await supabase
+        .from('api_keys')
+        .update({ revoked_at: new Date().toISOString() })
+        .eq('id', keyId)
+
+      if (error) throw error
+
+      // Remove from local state
+      setRunnerKeys(prev => prev.filter(key => key.id !== keyId))
+      toast.success('Runner key revoked successfully')
+
+    } catch (error) {
+      console.error('Error revoking runner key:', error)
+      toast.error('Failed to revoke runner key')
+    }
+  }
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success('Copied to clipboard')
+    } catch (error) {
+      toast.error('Failed to copy to clipboard')
     }
   }
 
@@ -121,29 +218,6 @@ export default function Settings() {
     }
   }
 
-  const testAlert = async () => {
-    setTestingAlert(true)
-    try {
-      const { data, error } = await supabase.functions.invoke('send-alert', {
-        body: {
-          type: 'test',
-          title: 'Test Alert',
-          message: 'This is a test alert to verify your notification settings.',
-          severity: 'info',
-          data: { timestamp: new Date().toISOString() }
-        }
-      })
-
-      if (error) throw error
-      toast.success('Test alert sent successfully')
-    } catch (error) {
-      console.error('Error sending test alert:', error)
-      toast.error('Failed to send test alert')
-    } finally {
-      setTestingAlert(false)
-    }
-  }
-
   return (
     <div className="space-y-6">
       <div>
@@ -153,11 +227,15 @@ export default function Settings() {
         </p>
       </div>
 
-      <Tabs defaultValue="api-keys" className="space-y-4">
+      <Tabs defaultValue="broker" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="api-keys" className="flex items-center gap-2">
+          <TabsTrigger value="broker" className="flex items-center gap-2">
+            <Bot className="w-4 h-4" />
+            Broker
+          </TabsTrigger>
+          <TabsTrigger value="runner" className="flex items-center gap-2">
             <Key className="w-4 h-4" />
-            API Keys
+            Runner Keys
           </TabsTrigger>
           <TabsTrigger value="alerts" className="flex items-center gap-2">
             <Bell className="w-4 h-4" />
@@ -165,7 +243,7 @@ export default function Settings() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="api-keys" className="space-y-4">
+        <TabsContent value="broker" className="space-y-4">
           {/* Interactive Brokers Settings */}
           <Card>
             <CardHeader>
@@ -178,15 +256,27 @@ export default function Settings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="ib-name">Configuration Name</Label>
+                <Input
+                  id="ib-name"
+                  value={brokerKeys.ibkr.name}
+                  onChange={(e) => setBrokerKeys(prev => ({
+                    ...prev,
+                    ibkr: { ...prev.ibkr, name: e.target.value }
+                  }))}
+                  placeholder="e.g., Paper Trading"
+                />
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="ib-port">TWS Port</Label>
                   <Input
                     id="ib-port"
-                    value={apiKeys.interactiveBrokers.port}
-                    onChange={(e) => setApiKeys(prev => ({
+                    value={brokerKeys.ibkr.port}
+                    onChange={(e) => setBrokerKeys(prev => ({
                       ...prev,
-                      interactiveBrokers: { ...prev.interactiveBrokers, port: e.target.value }
+                      ibkr: { ...prev.ibkr, port: e.target.value }
                     }))}
                     placeholder="7497 for Paper, 7496 for Live"
                   />
@@ -195,112 +285,116 @@ export default function Settings() {
                   <Label htmlFor="ib-client">Client ID</Label>
                   <Input
                     id="ib-client"
-                    value={apiKeys.interactiveBrokers.clientId}
-                    onChange={(e) => setApiKeys(prev => ({
+                    value={brokerKeys.ibkr.clientId}
+                    onChange={(e) => setBrokerKeys(prev => ({
                       ...prev,
-                      interactiveBrokers: { ...prev.interactiveBrokers, clientId: e.target.value }
+                      ibkr: { ...prev.ibkr, clientId: e.target.value }
                     }))}
                     placeholder="Unique client ID (1-999)"
                   />
                 </div>
               </div>
               <Button 
-                onClick={() => {
-                  saveApiKey('interactiveBrokers', 'port', apiKeys.interactiveBrokers.port)
-                  saveApiKey('interactiveBrokers', 'clientId', apiKeys.interactiveBrokers.clientId)
-                }}
+                onClick={saveBrokerCredentials}
                 className="w-full"
+                disabled={loading}
               >
                 <Save className="w-4 h-4 mr-2" />
-                Save IB Settings
+                Save Broker Settings
+              </Button>
+              
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Make sure TWS is running with API connections enabled before starting the Runner.
+                  Port 7497 = Paper Trading, Port 7496 = Live Trading
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="runner" className="space-y-4">
+          {/* Generate Runner Key */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="w-5 h-5" />
+                Runner Authentication Keys
+              </CardTitle>
+              <CardDescription>
+                Generate API keys for your local Runner instances to connect to the cloud
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button 
+                onClick={generateRunnerKey}
+                disabled={generatingKey}
+                className="w-full"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {generatingKey ? 'Generating...' : 'Generate New Runner Key'}
               </Button>
             </CardContent>
           </Card>
 
-          {/* Telegram Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="w-5 h-5" />
-                Telegram
-              </CardTitle>
-              <CardDescription>
-                Configure Telegram bot for alert notifications
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="telegram-token">Bot Token</Label>
-                <Input
-                  id="telegram-token"
-                  type="password"
-                  value={apiKeys.telegram.botToken}
-                  onChange={(e) => setApiKeys(prev => ({
-                    ...prev,
-                    telegram: { ...prev.telegram, botToken: e.target.value }
-                  }))}
-                  placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="telegram-chat">Chat ID</Label>
-                <Input
-                  id="telegram-chat"
-                  value={apiKeys.telegram.chatId}
-                  onChange={(e) => setApiKeys(prev => ({
-                    ...prev,
-                    telegram: { ...prev.telegram, chatId: e.target.value }
-                  }))}
-                  placeholder="-1001234567890"
-                />
-              </div>
-              <Button 
-                onClick={() => {
-                  saveApiKey('telegram', 'botToken', apiKeys.telegram.botToken)
-                  saveApiKey('telegram', 'chatId', apiKeys.telegram.chatId)
-                }}
-                className="w-full"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Save Telegram Settings
-              </Button>
-            </CardContent>
-          </Card>
+          {/* Active Runner Keys */}
+          {runnerKeys.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Active Runner Keys</CardTitle>
+                <CardDescription>
+                  Manage your active Runner authentication keys
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {runnerKeys.map((key) => (
+                  <div key={key.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{key.name}</Badge>
+                        {key.last_used_at && (
+                          <span className="text-xs text-muted-foreground">
+                            Last used: {new Date(key.last_used_at).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                      <div className="font-mono text-xs bg-muted p-2 rounded break-all">
+                        {key.token.substring(0, 16)}...{key.token.substring(-8)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Created: {new Date(key.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => copyToClipboard(key.token)}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => revokeRunnerKey(key.id)}
+                      >
+                        <Trash className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Discord Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bot className="w-5 h-5" />
-                Discord
-              </CardTitle>
-              <CardDescription>
-                Configure Discord webhook for alert notifications
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="discord-webhook">Webhook URL</Label>
-                <Input
-                  id="discord-webhook"
-                  type="password"
-                  value={apiKeys.discord.webhookUrl}
-                  onChange={(e) => setApiKeys(prev => ({
-                    ...prev,
-                    discord: { ...prev.discord, webhookUrl: e.target.value }
-                  }))}
-                  placeholder="https://discord.com/api/webhooks/..."
-                />
-              </div>
-              <Button 
-                onClick={() => saveApiKey('discord', 'webhookUrl', apiKeys.discord.webhookUrl)}
-                className="w-full"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Save Discord Settings
-              </Button>
-            </CardContent>
-          </Card>
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Copy your Runner key and paste it into your local Runner configuration. 
+              Keep these keys secure - they provide access to your trading account.
+            </AlertDescription>
+          </Alert>
         </TabsContent>
 
         <TabsContent value="alerts" className="space-y-4">
@@ -309,7 +403,7 @@ export default function Settings() {
             <CardHeader>
               <CardTitle>Notification Channels</CardTitle>
               <CardDescription>
-                Enable or disable different notification methods
+                Configure where you receive trading alerts
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -332,40 +426,94 @@ export default function Settings() {
 
               <Separator />
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Telegram className="w-5 h-5" />
-                  <div>
-                    <Label>Telegram Notifications</Label>
-                    <p className="text-sm text-muted-foreground">Real-time messages via Telegram bot</p>
+              {/* Telegram Settings */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Send className="w-5 h-5" />
+                    <div>
+                      <Label>Telegram Notifications</Label>
+                      <p className="text-sm text-muted-foreground">Real-time messages via Telegram bot</p>
+                    </div>
                   </div>
+                  <Switch
+                    checked={alertSettings.telegramEnabled}
+                    onCheckedChange={(checked) => setAlertSettings(prev => ({
+                      ...prev,
+                      telegramEnabled: checked
+                    }))}
+                  />
                 </div>
-                <Switch
-                  checked={alertSettings.telegramEnabled}
-                  onCheckedChange={(checked) => setAlertSettings(prev => ({
-                    ...prev,
-                    telegramEnabled: checked
-                  }))}
-                />
+                
+                {alertSettings.telegramEnabled && (
+                  <div className="ml-8 grid grid-cols-1 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="telegram-token">Bot Token</Label>
+                      <Input
+                        id="telegram-token"
+                        type="password"
+                        value={alertSettings.telegram.botToken}
+                        onChange={(e) => setAlertSettings(prev => ({
+                          ...prev,
+                          telegram: { ...prev.telegram, botToken: e.target.value }
+                        }))}
+                        placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="telegram-chat">Chat ID</Label>
+                      <Input
+                        id="telegram-chat"
+                        value={alertSettings.telegram.chatId}
+                        onChange={(e) => setAlertSettings(prev => ({
+                          ...prev,
+                          telegram: { ...prev.telegram, chatId: e.target.value }
+                        }))}
+                        placeholder="-1001234567890"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <Separator />
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <MessageSquare className="w-5 h-5" />
-                  <div>
-                    <Label>Discord Notifications</Label>
-                    <p className="text-sm text-muted-foreground">Messages to Discord channel</p>
+              {/* Discord Settings */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <MessageSquare className="w-5 h-5" />
+                    <div>
+                      <Label>Discord Notifications</Label>
+                      <p className="text-sm text-muted-foreground">Messages to Discord channel</p>
+                    </div>
                   </div>
+                  <Switch
+                    checked={alertSettings.discordEnabled}
+                    onCheckedChange={(checked) => setAlertSettings(prev => ({
+                      ...prev,
+                      discordEnabled: checked
+                    }))}
+                  />
                 </div>
-                <Switch
-                  checked={alertSettings.discordEnabled}
-                  onCheckedChange={(checked) => setAlertSettings(prev => ({
-                    ...prev,
-                    discordEnabled: checked
-                  }))}
-                />
+                
+                {alertSettings.discordEnabled && (
+                  <div className="ml-8">
+                    <div className="space-y-2">
+                      <Label htmlFor="discord-webhook">Webhook URL</Label>
+                      <Input
+                        id="discord-webhook"
+                        type="password"
+                        value={alertSettings.discord.webhookUrl}
+                        onChange={(e) => setAlertSettings(prev => ({
+                          ...prev,
+                          discord: { ...prev.discord, webhookUrl: e.target.value }
+                        }))}
+                        placeholder="https://discord.com/api/webhooks/..."
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -459,28 +607,19 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* Save and Test */}
+          {/* Save Settings */}
           <div className="flex gap-3">
             <Button onClick={saveAlertSettings} disabled={loading} className="flex-1">
               <Save className="w-4 h-4 mr-2" />
               {loading ? 'Saving...' : 'Save Alert Settings'}
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={testAlert} 
-              disabled={testingAlert}
-              className="flex items-center gap-2"
-            >
-              <TestTube className="w-4 h-4" />
-              {testingAlert ? 'Sending...' : 'Test Alert'}
             </Button>
           </div>
 
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Test alerts will be sent to all enabled channels. Make sure you've configured 
-              your API keys first in the API Keys tab.
+              Alerts will be sent to all enabled channels when bots encounter errors or 
+              complete trades. Make sure you've configured your API keys first.
             </AlertDescription>
           </Alert>
         </TabsContent>

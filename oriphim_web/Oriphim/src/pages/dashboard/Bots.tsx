@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Play, Square, MoreVertical, Copy, Edit, Trash2, ArrowLeft, Loader2 } from "lucide-react";
+import { Play, Square, MoreVertical, Copy, Edit, Trash2, ArrowLeft, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -17,6 +17,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 type Bot = Database['public']['Tables']['bots']['Row'];
+type Run = Database['public']['Tables']['runs']['Row'];
+
+interface BotWithRun extends Bot {
+  activeRun?: Run | null;
+}
 
 const getBotKindDisplay = (kind: Bot['kind']) => {
   const kindMap = {
@@ -31,24 +36,69 @@ const getBotKindDisplay = (kind: Bot['kind']) => {
 export default function Bots() {
   const navigate = useNavigate();
   const { user } = useAuthContext();
-  const [bots, setBots] = useState<Bot[]>([]);
+  const [bots, setBots] = useState<BotWithRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [runnerConnected, setRunnerConnected] = useState(false);
+  const [brokerConnected, setBrokerConnected] = useState(false);
 
-  // Fetch user's bots
+  // Fetch user's bots with their active runs
   useEffect(() => {
     if (!user) return;
     
     const fetchBots = async () => {
       try {
-        const { data, error } = await supabase
+        // Check runner connection status
+        const { data: runnerStatus, error: runnerError } = await supabase
+          .from('runner_status')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('last_heartbeat', { ascending: false })
+          .limit(1);
+
+        if (runnerError) throw runnerError;
+        
+        const isRunnerConnected = runnerStatus && runnerStatus.length > 0 && 
+          new Date(runnerStatus[0].last_heartbeat) > new Date(Date.now() - 5 * 60 * 1000);
+        
+        setRunnerConnected(isRunnerConnected);
+
+        // Check broker credentials
+        const { data: brokerCreds, error: credsError } = await supabase
+          .from('external_api_keys')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('provider', 'ibkr');
+
+        if (credsError) throw credsError;
+        setBrokerConnected(brokerCreds && brokerCreds.length > 0);
+
+        // Get bots with their active runs
+        const { data: botsData, error: botsError } = await supabase
           .from('bots')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        setBots(data || []);
+        if (botsError) throw botsError;
+
+        // Get active runs for these bots
+        const { data: runsData, error: runsError } = await supabase
+          .from('runs')
+          .select('*')
+          .eq('user_id', user.id)
+          .in('status', ['pending', 'running'])
+          .order('created_at', { ascending: false });
+
+        if (runsError) throw runsError;
+
+        // Combine bots with their active runs
+        const botsWithRuns: BotWithRun[] = (botsData || []).map(bot => {
+          const activeRun = runsData?.find(run => run.bot_id === bot.id) || null;
+          return { ...bot, activeRun };
+        });
+
+        setBots(botsWithRuns);
       } catch (error) {
         toast({
           title: "Error",
@@ -61,34 +111,125 @@ export default function Bots() {
     };
 
     fetchBots();
+
+    // Set up real-time subscriptions for live updates
+    const botsSubscription = supabase
+      .channel('bots-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bots',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => fetchBots()
+      )
+      .subscribe();
+
+    const runsSubscription = supabase
+      .channel('runs-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'runs',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => fetchBots()
+      )
+      .subscribe();
+
+    return () => {
+      botsSubscription.unsubscribe();
+      runsSubscription.unsubscribe();
+    };
   }, [user]);
 
   // Handle bot start/stop actions
-  const handleBotAction = async (botId: string, action: 'start' | 'stop') => {
+  const handleBotStart = async (botId: string, mode: 'paper' | 'live' = 'paper') => {
+    // Check runner and broker connection before starting
+    if (!brokerConnected) {
+      toast({
+        title: "Broker Not Connected",
+        description: "Please configure IBKR credentials in Settings first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!runnerConnected) {
+      toast({
+        title: "Runner Not Connected",
+        description: "Please start your Oriphim Runner desktop app first",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setActionLoading(botId);
     
     try {
-      const { data, error } = await supabase.functions.invoke(`${action}-run`, {
-        body: { bot_id: botId }
+      const { data, error } = await supabase.functions.invoke('start-run', {
+        body: { 
+          bot_id: botId,
+          mode: mode
+        }
       });
 
       if (error) throw error;
 
-      // Update local bot enabled state
-      setBots(prev => prev.map(bot => 
-        bot.id === botId 
-          ? { ...bot, is_enabled: action === 'start' }
-          : bot
-      ));
-
       toast({
         title: "Success",
-        description: `Bot ${action === 'start' ? 'started' : 'stopped'} successfully`,
+        description: `Bot started in ${mode} mode successfully`,
       });
+      
+      // Refresh bots to get updated state
+      window.location.reload(); // Simple refresh for now
+
     } catch (error) {
       toast({
         title: "Error",
-        description: `Failed to ${action} bot`,
+        description: `Failed to start bot: ${error.message || 'Unknown error'}`,
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleBotStop = async (bot: BotWithRun) => {
+    if (!bot.activeRun) {
+      toast({
+        title: "Error",
+        description: "No active run to stop",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setActionLoading(bot.id);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('stop-run', {
+        body: { run_id: bot.activeRun.id }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Bot stopped successfully",
+      });
+      
+      // Refresh bots to get updated state
+      window.location.reload(); // Simple refresh for now
+
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to stop bot: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       });
     } finally {
@@ -143,9 +284,13 @@ export default function Bots() {
                           </Badge>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={`h-2 w-2 rounded-full ${bot.is_enabled ? 'bg-green-500' : 'bg-gray-400'}`} />
+                          <span className={`h-2 w-2 rounded-full ${
+                            bot.activeRun ? 'bg-blue-500' : 
+                            bot.is_enabled ? 'bg-green-500' : 'bg-gray-400'
+                          }`} />
                           <span className="text-xs font-body">
-                            {bot.is_enabled ? 'Enabled' : 'Disabled'}
+                            {bot.activeRun ? `Running (${bot.activeRun.mode})` : 
+                             bot.is_enabled ? 'Ready' : 'Disabled'}
                           </span>
                         </div>
                       </div>
@@ -180,18 +325,22 @@ export default function Bots() {
                     <div className="border-t pt-3 flex items-center justify-between">
                       <div className="text-sm font-body">
                         <span className="text-muted-foreground">Status: </span>
-                        <span className={bot.is_enabled ? "text-green-500" : "text-gray-500"}>
-                          {bot.is_enabled ? 'Ready' : 'Disabled'}
+                        <span className={
+                          bot.activeRun ? "text-blue-500" : 
+                          bot.is_enabled ? "text-green-500" : "text-gray-500"
+                        }>
+                          {bot.activeRun ? `Running (${bot.activeRun.mode})` : 
+                           bot.is_enabled ? 'Ready' : 'Disabled'}
                         </span>
                       </div>
                       <div className="flex gap-2">
-                        {bot.is_enabled ? (
+                        {bot.activeRun ? (
                           <Button 
                             size="sm" 
-                            variant="outline" 
-                            onClick={() => handleBotAction(bot.id, 'stop')}
+                            variant="destructive"
+                            onClick={() => handleBotStop(bot)}
                             disabled={actionLoading === bot.id}
-                            className="font-body"
+                            className="font-body h-7"
                           >
                             {actionLoading === bot.id ? (
                               <Loader2 className="h-3 w-3 mr-1 animate-spin" />
@@ -200,20 +349,39 @@ export default function Bots() {
                             )}
                             Stop
                           </Button>
+                        ) : bot.is_enabled ? (
+                          <div className="flex gap-1">
+                            <Button 
+                              size="sm" 
+                              onClick={() => handleBotStart(bot.id, 'paper')}
+                              disabled={actionLoading === bot.id || !runnerConnected || !brokerConnected}
+                              className={`font-body ${(!runnerConnected || !brokerConnected) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              title={!runnerConnected ? 'Runner not connected' : !brokerConnected ? 'Broker not connected' : ''}
+                            >
+                              {actionLoading === bot.id ? (
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              ) : !runnerConnected || !brokerConnected ? (
+                                <AlertCircle className="h-3 w-3 mr-1" />
+                              ) : (
+                                <Play className="h-3 w-3 mr-1" />
+                              )}
+                              Start Paper
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleBotStart(bot.id, 'live')}
+                              disabled={actionLoading === bot.id || !runnerConnected || !brokerConnected}
+                              className={`font-body text-xs px-2 ${(!runnerConnected || !brokerConnected) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              title={!runnerConnected ? 'Runner not connected' : !brokerConnected ? 'Broker not connected' : ''}
+                            >
+                              Live
+                            </Button>
+                          </div>
                         ) : (
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleBotAction(bot.id, 'start')}
-                            disabled={actionLoading === bot.id}
-                            className="font-body"
-                          >
-                            {actionLoading === bot.id ? (
-                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                            ) : (
-                              <Play className="h-3 w-3 mr-1" />
-                            )}
-                            Start
-                          </Button>
+                          <div className="text-xs text-muted-foreground">
+                            Bot is disabled
+                          </div>
                         )}
                       </div>
                     </div>

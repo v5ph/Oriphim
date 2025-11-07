@@ -6,18 +6,80 @@
     <title>Oriphim – Automated Options Trading Bots</title>
     <meta name="description" content="Professional-grade automated options trading platform. Secure local execution, cloud control, built for precision." />
     <meta name="author" content="Oriphim" />
+    <meta name="keywords" content="options trading, automated trading, trading bots, algorithmic trading, options strategy, financial technology" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://oriphim.com" />
 
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://oriphim.com" />
     <meta property="og:title" content="Oriphim – Automated Options Trading Bots" />
     <meta property="og:description" content="Professional-grade automated options trading platform. Secure local execution, cloud control, built for precision." />
-    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://oriphim.com/og-image.png" />
+    <meta property="og:site_name" content="Oriphim" />
 
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://oriphim.com" />
+    <meta property="twitter:title" content="Oriphim – Automated Options Trading Bots" />
+    <meta property="twitter:description" content="Professional-grade automated options trading platform. Secure local execution, cloud control, built for precision." />
+    <meta property="twitter:image" content="https://oriphim.com/og-image.png" />
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Performance Optimizations -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cotmmxarkuwjroywcvce.supabase.co" crossorigin>
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+    
+    <!-- Fonts with display=swap for better performance -->
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Theme color for mobile browsers -->
+    <meta name="theme-color" content="#000000" />
+    <meta name="msapplication-TileColor" content="#000000" />
+
+    <!-- Preload critical resources -->
+    <link rel="modulepreload" href="/src/main.tsx" />
   </head>
 
   <body>
-    <div id="root"></div>
+    <!-- Loading indicator for better UX -->
+    <div id="root">
+      <div style="
+        position: fixed; 
+        top: 50%; 
+        left: 50%; 
+        transform: translate(-50%, -50%);
+        font-family: Inter, sans-serif;
+        color: #666;
+        text-align: center;
+      ">
+        <div style="
+          width: 40px; 
+          height: 40px; 
+          border: 3px solid #f3f3f3; 
+          border-top: 3px solid #000; 
+          border-radius: 50%; 
+          animation: spin 1s linear infinite;
+          margin: 0 auto 1rem;
+        "></div>
+        Loading Oriphim...
+      </div>
+      <style>
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      </style>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

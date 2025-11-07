@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { StatusIndicator } from "@/components/dashboard/StatusIndicator";
 import { DollarSign, Bot, TrendingUp, AlertTriangle, Activity, Zap, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -24,6 +26,7 @@ interface DashboardStats {
 
 export default function Overview() {
   const { user } = useAuthContext();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     todayPnL: 0,
     activeBots: 0,
@@ -33,6 +36,8 @@ export default function Overview() {
   });
   const [loading, setLoading] = useState(true);
   const [recentRuns, setRecentRuns] = useState<Run[]>([]);
+  const [runnerConnected, setRunnerConnected] = useState(false);
+  const [brokerConnected, setBrokerConnected] = useState(false);
 
   // Fetch dashboard data
   useEffect(() => {
@@ -40,6 +45,32 @@ export default function Overview() {
 
     const fetchDashboardData = async () => {
       try {
+        // Check runner connection status first
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const { data: runnerStatus, error: runnerError } = await supabase
+          .from('runner_status')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('last_seen', fiveMinutesAgo)
+          .order('last_seen', { ascending: false })
+          .limit(1);
+
+        if (runnerError) throw runnerError;
+        
+        const isRunnerConnected = runnerStatus && runnerStatus.length > 0;
+        
+        setRunnerConnected(isRunnerConnected);
+
+        // Check broker credentials
+        const { data: brokerCreds, error: credsError } = await supabase
+          .from('external_api_keys')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('provider', 'ibkr');
+
+        if (credsError) throw credsError;
+        setBrokerConnected(brokerCreds && brokerCreds.length > 0);
+
         // Fetch user's bots
         const { data: bots, error: botsError } = await supabase
           .from('bots')
@@ -79,7 +110,7 @@ export default function Overview() {
         setStats({
           todayPnL,
           activeBots,
-          openPositions: 0, // TODO: Calculate from active runs
+          openPositions: 0,
           totalRuns,
           winRate,
         });
@@ -135,9 +166,28 @@ export default function Overview() {
       )
       .subscribe();
 
+    // Set up real-time subscription for runner status
+    const runnerSubscription = supabase
+      .channel('runner-status-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'runner_status',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          // Refetch data when runner status changes
+          fetchDashboardData();
+        }
+      )
+      .subscribe();
+
     return () => {
       runsSubscription.unsubscribe();
       botsSubscription.unsubscribe();
+      runnerSubscription.unsubscribe();
     };
   }, [user]);
 
@@ -163,9 +213,17 @@ export default function Overview() {
             tooltip="Supabase connection active" 
           />
           <StatusIndicator 
-            label="IBKR" 
-            status={stats.activeBots > 0 ? "ok" : "disconnected"} 
-            tooltip={stats.activeBots > 0 ? "Connected to Interactive Brokers" : "No active bots"}
+            label="Runner" 
+            status={runnerConnected ? "connected" : "disconnected"} 
+            tooltip={runnerConnected ? "Desktop Runner connected and active" : "Desktop Runner not connected"}
+          />
+          <StatusIndicator 
+            label="Broker" 
+            status={brokerConnected && runnerConnected ? "ok" : "disconnected"} 
+            tooltip={brokerConnected ? 
+              (runnerConnected ? "IBKR credentials configured and Runner active" : "IBKR credentials configured, start Runner") :
+              "Configure IBKR credentials in Settings"
+            }
           />
           <StatusIndicator 
             label="Realtime" 
@@ -220,6 +278,32 @@ export default function Overview() {
         />
       </div>
 
+      {/* Connection Status Alert */}
+      {(!runnerConnected || !brokerConnected) && (
+        <div className="mb-6">
+          <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+            <div className="p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="font-medium text-amber-800 dark:text-amber-200 mb-1">
+                    Connection Required for Trading
+                  </h3>
+                  <div className="text-sm text-amber-700 dark:text-amber-300 space-y-1">
+                    {!runnerConnected && (
+                      <p>• Download and start the <span className="font-medium">Oriphim Runner</span> desktop app to enable trading</p>
+                    )}
+                    {!brokerConnected && (
+                      <p>• Configure your <span className="font-medium">IBKR credentials</span> in Settings to connect your broker</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* Charts Section */}
       <div className="grid gap-4 md:grid-cols-2">
         {/* P/L Chart */}
@@ -235,7 +319,23 @@ export default function Overview() {
               </Button>
             </div>
           </div>
-          <PnLChart className="flex-1" timeframe="daily" />
+          {runnerConnected && brokerConnected ? (
+            <PnLChart className="flex-1" timeframe="daily" />
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center space-y-3">
+                <Bot className="h-12 w-12 text-muted-foreground mx-auto" />
+                <div>
+                  <p className="text-sm font-mono font-semibold text-muted-foreground">Connect Runner First</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {!brokerConnected ? "Configure broker credentials in Settings" : 
+                     !runnerConnected ? "Start your Runner app to see live P/L data" :
+                     "Waiting for connection..."}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Market Data Chart */}
@@ -251,7 +351,23 @@ export default function Overview() {
               </Button>
             </div>
           </div>
-          <CandlestickChart symbol="SPY" className="flex-1" />
+          {runnerConnected && brokerConnected ? (
+            <CandlestickChart symbol="SPY" className="flex-1" />
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center space-y-3">
+                <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto" />
+                <div>
+                  <p className="text-sm font-mono font-semibold text-muted-foreground">Broker Connection Required</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {!brokerConnected ? "Add IBKR credentials in Settings, then start Runner" : 
+                     !runnerConnected ? "Start your Runner app to stream live market data" :
+                     "Establishing connection..."}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Recent Runs */}
@@ -299,18 +415,26 @@ export default function Overview() {
             <Button 
               variant="outline" 
               className="w-full justify-start font-body text-sm h-9"
-              onClick={() => window.location.href = '/dashboard/trading'}
+              onClick={() => navigate('/dashboard/trading')}
             >
               <TrendingUp className="w-4 h-4 mr-2" />
               View Trading Charts
             </Button>
-            <Button variant="outline" className="w-full justify-start font-body text-sm h-9">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start font-body text-sm h-9"
+              onClick={() => navigate('/dashboard/bots')}
+            >
               <Bot className="w-4 h-4 mr-2" />
-              Create Bot
+              Manage Bots
             </Button>
-            <Button variant="outline" className="w-full justify-start font-body text-sm h-9">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start font-body text-sm h-9"
+              onClick={() => navigate('/dashboard/runs')}
+            >
               <Activity className="w-4 h-4 mr-2" />
-              Start Paper Session
+              View All Runs
             </Button>
           </div>
         </div>

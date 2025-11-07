@@ -35,12 +35,6 @@ const Navigation = () => {
               </Link>
             ))}
             <Link
-              to="/dashboard"
-              className="font-body text-sm px-4 py-1 border border-foreground hover:bg-foreground hover:text-background transition-smooth"
-            >
-              Dev
-            </Link>
-            <Link
               to="/join-waitlist"
               className="font-body text-sm px-4 py-1 bg-foreground text-background hover:bg-foreground/90 transition-smooth"
             >

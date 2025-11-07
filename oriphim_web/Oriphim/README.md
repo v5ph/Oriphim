@@ -1,73 +1,145 @@
-# Welcome to your Lovable project
+# Oriphim Web Dashboard
 
-## Project info
+## Project Overview
 
-**URL**: https://lovable.dev/projects/25bdf8c0-6a6d-410f-a4d9-e0a7f3e1cb64
+**Production URL**: https://oriphim.com
 
-## How can I edit this code?
+Oriphim is an AI-driven options trading automation platform that enables users to deploy sophisticated trading bots with professional risk management and real-time monitoring capabilities.
 
-There are several ways of editing your application.
+## Features
 
-**Use Lovable**
+- **Automated Options Trading**: Deploy proven strategies like cash-secured puts, covered calls, and iron condors
+- **Real-time Dashboard**: Monitor positions, P/L, and bot performance with live market data
+- **Desktop Integration**: Seamless connection with the Oriphim Runner desktop application
+- **Professional Risk Management**: Built-in position sizing, stop-losses, and drawdown controls
+- **Interactive Broker Integration**: Direct connection to IBKR for live trading and paper trading
+- **Real-time Notifications**: Instant alerts for trades, errors, and system status
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/25bdf8c0-6a6d-410f-a4d9-e0a7f3e1cb64) and start prompting.
+## Development Setup
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js 18+ and npm - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- Git for version control
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Local Development
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Clone the repository
+git clone https://github.com/v5ph/oriphim-web.git
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Navigate to the web application directory
+cd oriphim-web/oriphim_web/Oriphim
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Copy environment variables
+cp .env.example .env
+
+# Add your Supabase credentials to .env
+# REACT_APP_SUPABASE_URL=your-supabase-url
+# REACT_APP_SUPABASE_ANON_KEY=your-supabase-anon-key
+
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The application will be available at `http://localhost:5173`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Build for Production
 
-**Use GitHub Codespaces**
+```sh
+# Create production build
+npm run build
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# Preview production build locally
+npm run preview
+```
 
-## What technologies are used for this project?
+## Technology Stack
 
-This project is built with:
+### Frontend
+- **React 18** - Modern React with hooks and functional components
+- **TypeScript** - Type-safe development with full IntelliSense
+- **Vite** - Fast build tool with hot module replacement
+- **Tailwind CSS** - Utility-first CSS framework for rapid styling
+- **shadcn/ui** - High-quality, accessible React components
+- **Lucide React** - Beautiful, customizable SVG icons
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Backend & Infrastructure
+- **Supabase** - PostgreSQL database with real-time subscriptions
+- **Supabase Edge Functions** - Serverless functions for backend logic
+- **Row Level Security** - Database-level security and authorization
+- **Real-time Subscriptions** - Live updates for trades and bot status
 
-## How can I deploy this project?
+### Integrations
+- **Interactive Brokers API** - Live trading and market data via IBKR
+- **Desktop Runner Integration** - Seamless connection with Python trading engine
+- **Real-time Charts** - Live market data visualization
+- **WebSocket Connections** - Real-time communication with trading systems
 
-Simply open [Lovable](https://lovable.dev/projects/25bdf8c0-6a6d-410f-a4d9-e0a7f3e1cb64) and click on Share -> Publish.
+## Project Structure
 
-## Can I connect a custom domain to my Lovable project?
+```
+src/
+├── components/          # Reusable UI components
+│   ├── ui/             # shadcn/ui base components
+│   ├── dashboard/      # Dashboard-specific components
+│   └── charts/         # Trading chart components
+├── pages/              # Page components and routing
+│   ├── dashboard/      # Dashboard pages (Overview, Bots, etc.)
+│   └── auth/           # Authentication pages
+├── hooks/              # Custom React hooks
+├── lib/                # Utility functions and configurations
+├── contexts/           # React context providers
+└── assets/             # Static assets and images
+```
 
-Yes, you can!
+## Environment Configuration
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+Required environment variables:
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```env
+# Supabase Configuration
+REACT_APP_SUPABASE_URL=https://your-project.supabase.co
+REACT_APP_SUPABASE_ANON_KEY=your-anon-key
+
+# Optional: Analytics and Monitoring
+REACT_APP_ANALYTICS_ID=your-analytics-id
+```
+
+## Deployment
+
+### Production Deployment
+The application is deployed at **https://oriphim.com** using modern web hosting with:
+- SSL/TLS encryption
+- CDN distribution
+- Automatic builds from the main branch
+- Environment variable management
+
+### Development Deployment
+For staging and testing:
+```sh
+npm run build
+npm run preview
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## Support
+
+For technical support and questions:
+- **Documentation**: Visit the project wiki
+- **Issues**: Report bugs via GitHub issues
+- **Email**: support@oriphim.com
+
+## License
+
+This project is proprietary software. All rights reserved.

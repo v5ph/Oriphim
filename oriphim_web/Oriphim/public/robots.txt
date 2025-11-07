@@ -12,3 +12,26 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+# Sitemap
+Sitemap: https://oriphim.com/sitemap.xml
+
+# Disallow sensitive areas
+Disallow: /admin
+Disallow: /api/internal
+Disallow: /.env
+Disallow: /config
+Disallow: /src
+
+# Crawl delay for bots
+Crawl-delay: 1
+
+# Block AI training bots
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
